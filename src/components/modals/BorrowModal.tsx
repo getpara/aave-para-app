@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { Market, formatAPY } from "@/lib/mockData";
+import { useClient } from "@getpara/react-sdk";
+import { createParaViemClient } from "@getpara/viem-v2-integration";
+import { http } from "viem";
+import { sepolia } from "viem/chains";
 
 interface BorrowModalProps {
   market: Market;
@@ -10,8 +14,36 @@ interface BorrowModalProps {
 
 export default function BorrowModal({ market, onClose }: BorrowModalProps) {
   const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const para = useClient();
+
   const parsed = parseFloat(amount) || 0;
   const isValid = parsed > 0;
+
+  const handleBorrow = async () => {
+    if (!para || !isValid) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const client = createParaViemClient(para, {
+        chain: sepolia,
+        transport: http(),
+      });
+      const [address] = await client.getAddresses();
+      const hash = await client.sendTransaction({
+        to: address,
+        value: 0n,
+        chain: sepolia,
+      });
+      setTxHash(hash);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Transaction failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -83,9 +115,13 @@ export default function BorrowModal({ market, onClose }: BorrowModalProps) {
             border: "1px solid var(--aave-border)",
           }}>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^\d*\.?\d*$/.test(val)) setAmount(val);
+              }}
               placeholder="0.00"
               style={{
                 flex: 1, background: "transparent", border: "none", outline: "none",
@@ -99,7 +135,7 @@ export default function BorrowModal({ market, onClose }: BorrowModalProps) {
         </div>
 
         {/* Summary + warning */}
-        {isValid && (
+        {isValid && !txHash && (
           <>
             <div style={{
               padding: "14px 18px", borderRadius: "10px",
@@ -131,24 +167,54 @@ export default function BorrowModal({ market, onClose }: BorrowModalProps) {
           </>
         )}
 
+        {/* Success */}
+        {txHash && (
+          <div style={{
+            padding: "14px 18px", borderRadius: "10px", marginBottom: "16px",
+            backgroundColor: "rgba(50,200,120,0.08)",
+            border: "1px solid rgba(50,200,120,0.25)",
+          }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--aave-green)", marginBottom: "6px" }}>
+              Transaction submitted
+            </div>
+            <a
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: "12px", color: "var(--aave-green)", wordBreak: "break-all" }}>
+              {txHash}
+            </a>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            padding: "12px 16px", borderRadius: "10px", marginBottom: "16px",
+            backgroundColor: "rgba(255,80,80,0.08)",
+            border: "1px solid rgba(255,80,80,0.25)",
+            fontSize: "12px", color: "#ff6b6b",
+          }}>
+            {error}
+          </div>
+        )}
+
         <button
-          disabled={!isValid}
+          disabled={!isValid || loading}
+          onClick={handleBorrow}
           style={{
             width: "100%",
             padding: "14px",
             borderRadius: "10px",
             border: "none",
-            background: isValid ? "var(--aave-yellow)" : "var(--aave-bg-hover)",
-            color: isValid ? "#1a1b2e" : "var(--aave-text-muted)",
+            background: isValid && !loading ? "var(--aave-yellow)" : "var(--aave-bg-hover)",
+            color: isValid && !loading ? "#1a1b2e" : "var(--aave-text-muted)",
             fontSize: "15px",
             fontWeight: 700,
-            cursor: isValid ? "pointer" : "not-allowed",
+            cursor: isValid && !loading ? "pointer" : "not-allowed",
           }}>
-          {isValid ? `Borrow ${parsed.toLocaleString()} ${market.symbol}` : "Enter an amount"}
+          {loading ? "Submitting…" : isValid ? `Borrow ${parsed.toLocaleString()} ${market.symbol}` : "Enter an amount"}
         </button>
-        <p style={{ textAlign: "center", marginTop: "12px", fontSize: "11px", color: "var(--aave-text-muted)" }}>
-          Demo only — no real transactions
-        </p>
       </div>
     </div>
   );

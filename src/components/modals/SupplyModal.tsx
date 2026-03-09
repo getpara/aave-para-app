@@ -1,7 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Market, formatAPY } from "@/lib/mockData";
+import { Market, formatAPY, MOCK_LENDING_POOL } from "@/lib/mockData";
+import { useClient } from "@getpara/react-sdk";
+import { createParaViemClient } from "@getpara/viem-v2-integration";
+import { http } from "viem";
+import { sepolia } from "viem/chains";
+
+const ERC20_ABI = [
+  {
+    name: "approve",
+    type: "function",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "value", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+  },
+] as const;
 
 interface SupplyModalProps {
   market: Market;
@@ -10,8 +27,37 @@ interface SupplyModalProps {
 
 export default function SupplyModal({ market, onClose }: SupplyModalProps) {
   const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const para = useClient();
+
   const parsed = parseFloat(amount) || 0;
   const isValid = parsed > 0;
+
+  const handleSupply = async () => {
+    if (!para || !isValid) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const client = createParaViemClient(para, {
+        chain: sepolia,
+        transport: http(),
+      });
+      const hash = await client.writeContract({
+        address: market.tokenAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [MOCK_LENDING_POOL, BigInt(Math.round(parsed * 1e6))],
+        chain: sepolia,
+      });
+      setTxHash(hash);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Transaction failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -83,9 +129,16 @@ export default function SupplyModal({ market, onClose }: SupplyModalProps) {
             border: "1px solid var(--aave-border)",
           }}>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^\d*\.?\d*$/.test(val)) setAmount(val);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && isValid && !loading) handleSupply();
+              }}
               placeholder="0.00"
               style={{
                 flex: 1, background: "transparent", border: "none", outline: "none",
@@ -99,7 +152,7 @@ export default function SupplyModal({ market, onClose }: SupplyModalProps) {
         </div>
 
         {/* Summary */}
-        {isValid && (
+        {isValid && !txHash && (
           <div style={{
             padding: "14px 18px", borderRadius: "10px",
             backgroundColor: "var(--aave-bg-row)",
@@ -118,24 +171,54 @@ export default function SupplyModal({ market, onClose }: SupplyModalProps) {
           </div>
         )}
 
+        {/* Success */}
+        {txHash && (
+          <div style={{
+            padding: "14px 18px", borderRadius: "10px", marginBottom: "16px",
+            backgroundColor: "rgba(50,200,120,0.08)",
+            border: "1px solid rgba(50,200,120,0.25)",
+          }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--aave-green)", marginBottom: "6px" }}>
+              Transaction submitted
+            </div>
+            <a
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: "12px", color: "var(--aave-green)", wordBreak: "break-all" }}>
+              {txHash}
+            </a>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            padding: "12px 16px", borderRadius: "10px", marginBottom: "16px",
+            backgroundColor: "rgba(255,80,80,0.08)",
+            border: "1px solid rgba(255,80,80,0.25)",
+            fontSize: "12px", color: "#ff6b6b",
+          }}>
+            {error}
+          </div>
+        )}
+
         <button
-          disabled={!isValid}
+          disabled={!isValid || loading}
+          onClick={handleSupply}
           style={{
             width: "100%",
             padding: "14px",
             borderRadius: "10px",
             border: "none",
-            background: isValid ? "linear-gradient(135deg, #b6509e, #2ebac6)" : "var(--aave-bg-hover)",
-            color: isValid ? "#fff" : "var(--aave-text-muted)",
+            background: isValid && !loading ? "linear-gradient(135deg, #b6509e, #2ebac6)" : "var(--aave-bg-hover)",
+            color: isValid && !loading ? "#fff" : "var(--aave-text-muted)",
             fontSize: "15px",
             fontWeight: 700,
-            cursor: isValid ? "pointer" : "not-allowed",
+            cursor: isValid && !loading ? "pointer" : "not-allowed",
           }}>
-          {isValid ? `Supply ${parsed.toLocaleString()} ${market.symbol}` : "Enter an amount"}
+          {loading ? "Submitting…" : isValid ? `Supply ${parsed.toLocaleString()} ${market.symbol}` : "Enter an amount"}
         </button>
-        <p style={{ textAlign: "center", marginTop: "12px", fontSize: "11px", color: "var(--aave-text-muted)" }}>
-          Demo only — no real transactions
-        </p>
       </div>
     </div>
   );

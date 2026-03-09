@@ -7,7 +7,11 @@ export interface Market {
   totalBorrow: number;
   utilizationRate: number;
   iconColor: string;
+  tokenAddress: string;
 }
+
+// Spender address for approve() calls — mock lending pool on Sepolia
+export const MOCK_LENDING_POOL = "0xAaAAaaA000000000000000000000000000000001" as const;
 
 export const MARKETS: Market[] = [
   {
@@ -19,6 +23,8 @@ export const MARKETS: Market[] = [
     totalBorrow: 22_100_000,
     utilizationRate: 45.8,
     iconColor: "#00aae4",
+    // RLUSD has no official Sepolia deployment; using USDC address as fallback
+    tokenAddress: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
   },
   {
     symbol: "PYUSD",
@@ -29,6 +35,7 @@ export const MARKETS: Market[] = [
     totalBorrow: 14_800_000,
     utilizationRate: 47.1,
     iconColor: "#003087",
+    tokenAddress: "0xCaC524BcA292aaade2DF8bD895A70bb9B1d95f80",
   },
   {
     symbol: "USDC",
@@ -39,6 +46,7 @@ export const MARKETS: Market[] = [
     totalBorrow: 72_300_000,
     utilizationRate: 57.9,
     iconColor: "#2775ca",
+    tokenAddress: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
   },
 ];
 
