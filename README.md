@@ -1,4 +1,4 @@
-# aave-para-app
+# Aave Example
 
 A demo of 1-click deposit into yield-bearing stablecoins — the key idea being that with Para's embedded wallet SDK and Aave, a user can deposit into compliant, yield-bearing assets with one click.
 
@@ -14,4 +14,4 @@ This app combines [Para](https://www.getpara.com/)'s embedded wallet with [Aave]
 
 ## Getting Started
 
-You can run this app with a regular API key from Para. To set permissions yourself, [get in touch with us](https://getpara.com/talk-to-us) or view the [hosted demo](TODO).
+You can run this app with a regular API key from Para. To set permissions yourself, [get in touch with us](https://getpara.com/talk-to-us) or view the [hosted demo](https://aave-para-app.vercel.app/).
