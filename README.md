@@ -2,6 +2,8 @@
 
 A demo of 1-click deposit into yield-bearing stablecoins — the key idea being that with Para's embedded wallet SDK and Aave, a user can deposit into compliant, yield-bearing assets with one click.
 
+**This app is just an example and permissions are only applied on testnets. Please do not use on any mainnet chains or use real funds with this example. In order to test permissions, please navigate to the Testnet market.**
+
 ## How It Works
 
 This app combines [Para](https://www.getpara.com/)'s embedded wallet with [Aave](https://aave.com)'s lending protocol to enable a single-click deposit flow:
